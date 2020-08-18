@@ -1,0 +1,61 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h> 
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include "MQ135.h"
+#define ANALOGPIN A0
+MQ135 gasSensor = MQ135(ANALOGPIN);
+int MQ_OnBoard= 2;
+#ifndef STASSID
+#define STASSID "Nazmul"
+#define STAPSK  "lingkon10"
+#endif
+const char* ssid = STASSID;
+const char* password = STAPSK;
+WiFiServer server(80);
+const char *host = "192.168.43.205"; 
+void setup() {
+  delay(1000);
+   pinMode(MQ_OnBoard, OUTPUT);    
+   Serial.begin(115200);
+  WiFi.mode(WIFI_OFF);      
+  delay(1000);
+  WiFi.mode(WIFI_STA);        
+  WiFi.begin(ssid, password);    
+  Serial.println("");
+  Serial.print("Connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+  digitalWrite(MQ_OnBoard, LOW);
+    delay(250);
+    Serial.print(".");
+   digitalWrite(MQ_OnBoard, HIGH);
+   delay(250);
+  }
+  digitalWrite(MQ_OnBoard, HIGH);
+  Serial.println("");
+  Serial.println("Connected to Network/SSID");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());  
+}
+void loop() {
+  HTTPClient http;    
+  String LdrValueSend, postData;
+  float ldrvalue = gasSensor.getPPM();
+ 
+  LdrValueSend = String(ldrvalue);   
+
+  postData = "id=" + LdrValueSend;
+ 
+  http.begin("http://192.168.43.205/Air_Quality_Monitoring_System/model/InsertDB.php");          
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");    
+  int httpCode = http.POST(postData);   
+  String payload = http.getString();    
+  Serial.println(httpCode);   
+ Serial.println(payload);    
+  Serial.println("MQ Value=" + LdrValueSend);
+  http.end();  
+  delay(20000);  
+  digitalWrite(MQ_OnBoard, LOW);
+  delay(1000);
+  digitalWrite(MQ_OnBoard, HIGH);
+}
